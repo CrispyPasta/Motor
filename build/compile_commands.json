@@ -1,0 +1,12 @@
+[
+{
+  "directory": "/home/armandt/Desktop/project2021/Motor/build",
+  "command": "/usr/bin/g++-7    -g   -std=gnu++14 -o CMakeFiles/Motor.dir/main.cpp.o -c /home/armandt/Desktop/project2021/Motor/main.cpp",
+  "file": "/home/armandt/Desktop/project2021/Motor/main.cpp"
+},
+{
+  "directory": "/home/armandt/Desktop/project2021/Motor/build",
+  "command": "/usr/bin/g++-7    -g   -std=gnu++14 -o CMakeFiles/Motor.dir/PID/PID.cpp.o -c /home/armandt/Desktop/project2021/Motor/PID/PID.cpp",
+  "file": "/home/armandt/Desktop/project2021/Motor/PID/PID.cpp"
+}
+]

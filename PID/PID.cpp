@@ -4,6 +4,7 @@
 
 #include "PID.h"
 using namespace std;
+using namespace chrono;
 using namespace GPIO;
 
 PID::PID() {
@@ -16,19 +17,19 @@ PID::PID() {
     targetRPM = 0.0;
     currentRPM = 0.0;
     setup_complete = false;
-    this->setupPWM(true);
+    this->setupPins(true);
     motor_pwm = new GPIO::PWM(PWM_pin, 1000);
 }
 
 
-void PID::setupPWM(bool clockwise) {
+void PID::setupPins(bool clockwise) {
     try{
         GPIO::setmode(GPIO::BOARD);
 
-        GPIO::setup(PWM_pin, OUT);
-        GPIO::setup(standby_pin, OUT);
-        GPIO::setup(direction_pin1, OUT);
-        GPIO::setup(direction_pin2, OUT);
+        GPIO::setup(PWM_pin, GPIO::OUT);
+        GPIO::setup(standby_pin, GPIO::OUT);
+        GPIO::setup(direction_pin1, GPIO::OUT);
+        GPIO::setup(direction_pin2, GPIO::OUT);
 
         if (clockwise){
             GPIO::output(direction_pin1, GPIO::HIGH);                   //set direction to clockwise
@@ -38,6 +39,8 @@ void PID::setupPWM(bool clockwise) {
             GPIO::output(direction_pin2, GPIO::HIGH);
         }
         GPIO::output(standby_pin, GPIO::HIGH);
+
+        GPIO::setup(hall_effect_pin, GPIO::IN);         //RPM section
         setup_complete = true;
     } catch (...) {
         string e = "Error encountered in setupPWM() function.";
@@ -97,7 +100,14 @@ float PID::getDutyCycle() {
 
 
 void PID::rpm_interrupt_handler() {
-    
+    cout << "RPM interrupt handler.\n";
+    rotationEnd = high_resolution_clock::now();
+    rotationDuration = duration_cast<milliseconds>(rotationEnd - rotationStart);
+    rotationStart = high_resolution_clock::now();
+
+    cout << "Rotation duration: " << rotationDuration.count() << " milliseconds\n";
+    currentRPM = 60000.0 / rotationDuration.count();
+    cout << "RPM: " << to_string(currentRPM) << '\n';
 }
 
 

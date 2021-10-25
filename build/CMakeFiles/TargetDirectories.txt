@@ -1,0 +1,3 @@
+/home/armandt/Desktop/project2021/Motor/build/CMakeFiles/rebuild_cache.dir
+/home/armandt/Desktop/project2021/Motor/build/CMakeFiles/Motor.dir
+/home/armandt/Desktop/project2021/Motor/build/CMakeFiles/edit_cache.dir

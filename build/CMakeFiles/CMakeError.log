@@ -1,0 +1,36 @@
+Determining if the pthread_create exist failed with the following output:
+Change Dir: /home/armandt/Desktop/project2021/Motor/build/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_78d66/fast"
+/usr/bin/make -f CMakeFiles/cmTC_78d66.dir/build.make CMakeFiles/cmTC_78d66.dir/build
+make[1]: Entering directory '/home/armandt/Desktop/project2021/Motor/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_78d66.dir/CheckSymbolExists.c.o
+/usr/bin/gcc-7    -o CMakeFiles/cmTC_78d66.dir/CheckSymbolExists.c.o   -c /home/armandt/Desktop/project2021/Motor/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+Linking C executable cmTC_78d66
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_78d66.dir/link.txt --verbose=1
+/usr/bin/gcc-7      CMakeFiles/cmTC_78d66.dir/CheckSymbolExists.c.o  -o cmTC_78d66 
+CMakeFiles/cmTC_78d66.dir/CheckSymbolExists.c.o: In function `main':
+CheckSymbolExists.c:(.text+0x14): undefined reference to `pthread_create'
+CheckSymbolExists.c:(.text+0x18): undefined reference to `pthread_create'
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_78d66.dir/build.make:97: recipe for target 'cmTC_78d66' failed
+make[1]: *** [cmTC_78d66] Error 1
+make[1]: Leaving directory '/home/armandt/Desktop/project2021/Motor/build/CMakeFiles/CMakeTmp'
+Makefile:126: recipe for target 'cmTC_78d66/fast' failed
+make: *** [cmTC_78d66/fast] Error 2
+
+File /home/armandt/Desktop/project2021/Motor/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <pthread.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef pthread_create
+  return ((int*)(&pthread_create))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+

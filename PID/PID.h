@@ -13,7 +13,7 @@
 #include <iostream>
 
 class PID {
-private:
+public:
     // ****** PIN LOCATIONS ****** //
     int PWM_pin;
     int standby_pin;
@@ -25,18 +25,19 @@ private:
     float targetRPM;
     float currentRPM;
     // ****** RPM VARIABLES ****** //
-    std::chrono::time_point<std::chrono::high_resolution_clock> rotEnd = std::chrono::high_resolution_clock::now();
-    std::chrono::time_point<std::chrono::high_resolution_clock> rotStart = std::chrono::high_resolution_clock::now();
-    std::chrono::milliseconds rotDuration;
+    std::chrono::time_point<std::chrono::high_resolution_clock> rotationEnd = std::chrono::high_resolution_clock::now();
+    std::chrono::time_point<std::chrono::high_resolution_clock> rotationStart = std::chrono::high_resolution_clock::now();
+    std::chrono::milliseconds rotationDuration;
+    float rpmHistory[500];
     // ****** MISC ****** //
     GPIO::PWM* motor_pwm;
     bool setup_complete;
-public:
+
     PID();
 
     ~PID();
 
-    void setupPWM(bool c);
+    void setupPins(bool c);
 
     void ChangeDutyCycle(float d);
 
