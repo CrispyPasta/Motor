@@ -19,6 +19,10 @@ PID::PID() {
     setup_complete = false;
     this->setupPins(true);
     motor_pwm = new GPIO::PWM(PWM_pin, 1000);
+
+    historySize = 15;
+    // errorHistory.reserve(historySize);
+    // rotationTimeHistory.reserve(historySize);
 }
 
 
@@ -110,6 +114,44 @@ void PID::rpm_interrupt_handler() {
     cout << "Rotation duration: " << rotationDuration.count() << " milliseconds\n";
     currentRPM = 60000.0 / rotationDuration.count();
     cout << "RPM: " << to_string(currentRPM) << '\n';
+
+    errorHistory.push_back(currentRPM);
+    rotationTimeHistory.push_back(rotationDuration.count());
+
+    // if (errorHistory.size() == historySize) {   //if the vector is full, remove the oldest element
+    //     errorHistory.erase(errorHistory.begin());
+    //     rotationTimeHistory.erase(rotationTimeHistory.begin());
+    // }
+
+    printVectors();
+}
+
+void PID::printVectors() {
+    for (int a = 0; a < errorHistory.size(); a++) {
+        cout << "RPM: " << setprecision(3) << errorHistory[a];
+        cout << ". Time: " << setprecision(3) <<  rotationTimeHistory[a] << '\n';
+    }
+    cout << '\n';
+}
+
+void PID::dumpText() {
+    ofstream outFile;
+    outFile.open("./motorData.txt", std::ios_base::app);
+    auto t = std::time(nullptr);
+    auto tm = *std::localtime(&t);
+    outFile << "==============================";
+    outFile << "\nDate/Time: ";
+    outFile << put_time(&tm, "%d-%m-%Y %H-%M-%S") << endl;
+    outFile << "==============================\n";
+
+    for (int a = 0; a < errorHistory.size(); a++){
+        outFile << "RPM: " << setprecision(5) << setw(8) << errorHistory[a] << '\t';
+        outFile << "Δt: " << setprecision(3) << rotationTimeHistory[a] << '\n';
+    }
+
+    outFile << '\n';
+
+    outFile.close();
 }
 
 

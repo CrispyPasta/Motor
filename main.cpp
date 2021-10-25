@@ -54,7 +54,7 @@ int main() {
     }
 
     pid_ptr->rampDown(3);
-    // GPIO::cleanup();
+    pid_ptr->dumpText();
 
     return 0;
 }

@@ -11,6 +11,9 @@
 #include <string>
 #include <thread>
 #include <iostream>
+#include <vector>
+#include <iomanip>
+#include <fstream>
 
 class PID {
 public:
@@ -28,10 +31,12 @@ public:
     std::chrono::time_point<std::chrono::steady_clock> rotationEnd = std::chrono::steady_clock::now();
     std::chrono::time_point<std::chrono::steady_clock> rotationStart = std::chrono::steady_clock::now();
     std::chrono::milliseconds rotationDuration;
-    float rpmHistory[500];
+    std::vector<float> errorHistory;
+    std::vector<float> rotationTimeHistory;
     // ****** MISC ****** //
     GPIO::PWM* motor_pwm;
     bool setup_complete;
+    int historySize;
 
     PID();
 
@@ -50,6 +55,10 @@ public:
     float getDutyCycle();
 
     void rpm_interrupt_handler();
+
+    void printVectors();
+
+    void dumpText();
 
     void setPWM_pin(int t) {
         PWM_pin = t;
