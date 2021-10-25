@@ -25,8 +25,8 @@ public:
     float targetRPM;
     float currentRPM;
     // ****** RPM VARIABLES ****** //
-    std::chrono::time_point<std::chrono::high_resolution_clock> rotationEnd = std::chrono::high_resolution_clock::now();
-    std::chrono::time_point<std::chrono::high_resolution_clock> rotationStart = std::chrono::high_resolution_clock::now();
+    std::chrono::time_point<std::chrono::steady_clock> rotationEnd = std::chrono::steady_clock::now();
+    std::chrono::time_point<std::chrono::steady_clock> rotationStart = std::chrono::steady_clock::now();
     std::chrono::milliseconds rotationDuration;
     float rpmHistory[500];
     // ****** MISC ****** //
@@ -41,7 +41,7 @@ public:
 
     void ChangeDutyCycle(float d);
 
-    void rampDown(GPIO::PWM* pwm, int s);
+    void rampDown(int s);
 
     void setDirection(std::string s);
 

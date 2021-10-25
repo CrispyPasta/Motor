@@ -62,13 +62,15 @@ void PID::ChangeDutyCycle(float d) {
 }
 
 
-void PID::rampDown(GPIO::PWM* pwm, int s) {
+void PID::rampDown(int s) {
     int pauseLength = (s * 1000) / dutyCycle;
 
     for (int a = dutyCycle; a > 0; --a){
         this->ChangeDutyCycle(a);
         std::this_thread::sleep_for(std::chrono::milliseconds(pauseLength));
     }
+
+    this->ChangeDutyCycle(0);
 }
 
 
@@ -101,9 +103,9 @@ float PID::getDutyCycle() {
 
 void PID::rpm_interrupt_handler() {
     cout << "RPM interrupt handler.\n";
-    rotationEnd = high_resolution_clock::now();
+    rotationEnd = steady_clock::now();
     rotationDuration = duration_cast<milliseconds>(rotationEnd - rotationStart);
-    rotationStart = high_resolution_clock::now();
+    rotationStart = steady_clock::now();
 
     cout << "Rotation duration: " << rotationDuration.count() << " milliseconds\n";
     currentRPM = 60000.0 / rotationDuration.count();
