@@ -55,6 +55,9 @@ void PID::ChangeDutyCycle(float d) {
     if ((d <= 100.0) && (d >= 0.0)){
         motor_pwm->ChangeDutyCycle(d);
         dutyCycle = d;
+        if (dutyCycle < 5) {
+            currentRPM = 0;
+        }
     } else {
         string e = "ERROR: Invalid dutyCycle passed to PID::ChangeDutyCycle.";
         throw e;
@@ -108,10 +111,11 @@ void PID::rpm_interrupt_handler() {
 
     // cout << "Rotation duration: " << (rotationDuration.count() / 1000.0) << " milliseconds\n";
     currentRPM = 60000000.0 / rotationDuration.count();
-    cout << "RPM: " << to_string(currentRPM) << '\n';
+    // cout << "RPM: " << to_string(currentRPM) << '\n';
 
     rpmHistory.push_back(currentRPM);
-    errorHistory.push_back(currentRPM - targetRPM);
+    errorHistory.push_back(targetRPM - currentRPM);
+    cout << "RPM: " << to_string(errorHistory.back()) << '\n';
     rotationTimeHistory.push_back(rotationDuration.count());
 
     if (errorHistory.size() > historySize) {   //if the vector is full, remove the oldest element
@@ -126,33 +130,40 @@ float PID::pidControl(float t, float Pk, float Pi, float Pd) {
     cout << "PID CONTROL FUNCTION\n";
     targetRPM = t;      //update the target RPM for the next time the rpm interrupt is called
 
-    cout << this->errorHistory.back() << '\n';
-    float proportional = errorHistory.back() * Pk;          //use latest error
-    cout << "PID CONTROL proportional set\n";
+    if (errorHistory.size() > 2) {
+        float proportional = errorHistory.back() * Pk;          //use latest error
+        cout << "PID CONTROL proportional set: " << proportional << '\n';
 
 
-    float integral = 0;
-    for (int a = 0; a < errorHistory.size(); a++) { //calculate discrete integral over the duration in seconds (multiply milliseconds by 1000)
-        integral += errorHistory[a] * (rotationTimeHistory[a] / 1000);
+        float integral = 0;
+        for (int a = 0; a < errorHistory.size(); a++) { //calculate discrete integral over the duration in seconds (multiply milliseconds by 1000)
+            integral += errorHistory[a] * (rotationTimeHistory[a] / 1000000);
+        }
+        cout << "PID CONTROL integral set: " << integral << '\n';
+
+        float errorChange = (errorHistory[errorHistory.size() -2] - errorHistory[errorHistory.size() -1]);
+        float derivative = (errorChange / rotationTimeHistory.back()) * Pd;     //change in error divided by the time between rotations. 
+        cout << "PID CONTROL derivative set: " << derivative << '\n';
+
+        float output = proportional + integral + derivative;
+
+        //correct any invalid values for duty cycle here 
+        if (output > 100) {
+            output = 100.0;
+        } 
+
+        if (output < 0) {
+            output = 0.0;
+        }
+        
+        cout << output << '\n';
+        return output;
     }
-    cout << "PID CONTROL integral set\n";
 
-    float errorChange = (errorHistory[errorHistory.size() -1] - errorHistory[errorHistory.size() -2]);
-    float derivative = (errorChange / rotationTimeHistory.back()) * Pd;     //change in error divided by the time between rotations. 
-    cout << "PID CONTROL derivative set\n";
-
-    float output = proportional + integral + derivative;
-
-    //correct any invalid values for duty cycle here 
-    if (output > 100) {
-        output = 100.0;
+    if (currentRPM < targetRPM) {
+        cout << (dutyCycle +10) << '\n';
+        return (dutyCycle + 10);
     } 
-
-    if (output < 0) {
-        output = 0.0;
-    }
-
-    return output;
 }
 
 

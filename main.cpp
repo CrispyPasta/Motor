@@ -14,6 +14,8 @@ bool done = false;
 PID* pid_ptr = nullptr;
 int rotations = 0;
 
+bool PIDmode = false;
+
 void delayMs(int ms) { 
     this_thread::sleep_for(chrono::milliseconds(ms)); 
 }
@@ -34,19 +36,22 @@ int main(int numArgs, char* args[]) {
     float Pk;
     float Pi;
     float Pd;
-    if (numArgs == 4) {
-        targetRPM = atof(args[0]);
-        Pk = atof(args[1]);
-        Pi = atof(args[2]);
-        Pd = atof(args[3]);
+
+    if (numArgs == 5) {
+        PIDmode = true;
+        targetRPM = atof(args[1]);
+        Pk = atof(args[2]);
+        Pi = atof(args[3]);
+        Pd = atof(args[4]);
         cout << "arguments set\n";
     }
 
     //when CTRL+C is pressed, signalHandler will be invoked.
     signal(SIGINT, signalHandler);
     pid_ptr = new PID();
+    pid_ptr->targetRPM = targetRPM;
     
-    double dutyCycle = 5;
+    double dutyCycle = 10;
     pid_ptr->start(dutyCycle);
     GPIO::setup(18, GPIO::IN);
     GPIO::setup(11, GPIO::OUT, GPIO::LOW);
@@ -56,9 +61,8 @@ int main(int numArgs, char* args[]) {
 
     while(!done){
         delayMs(750);
-        if (numArgs == 4) {
+        if (PIDmode) {
             dutyCycle = pid_ptr->pidControl(targetRPM, Pk, Pi, Pd);
-            cout << dutyCycle << '\n';
         } else {
             dutyCycle += increment;
         }
