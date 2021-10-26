@@ -13,16 +13,15 @@ PID::PID() {
     direction_pin1 = 21;
     direction_pin2 = 23;
     hall_effect_pin = 18;
+
     dutyCycle = 0.0;
     targetRPM = 0.0;
     currentRPM = 0.0;
-    setup_complete = false;
+
     this->setupPins(true);
     motor_pwm = new GPIO::PWM(PWM_pin, 1000);
 
-    historySize = 15;
-    // errorHistory.reserve(historySize);
-    // rotationTimeHistory.reserve(historySize);
+    historySize = 1500;
 }
 
 
@@ -45,7 +44,6 @@ void PID::setupPins(bool clockwise) {
         GPIO::output(standby_pin, GPIO::HIGH);
 
         GPIO::setup(hall_effect_pin, GPIO::IN);         //RPM section
-        setup_complete = true;
     } catch (...) {
         string e = "Error encountered in setupPWM() function.";
         throw e;
@@ -54,14 +52,12 @@ void PID::setupPins(bool clockwise) {
 
 
 void PID::ChangeDutyCycle(float d) {
-    if (setup_complete) {
-        if ((d <= 100.0) && (d >= 0.0)){
-            motor_pwm->ChangeDutyCycle(d);
-            dutyCycle = d;
-        } else {
-            string e = "ERROR: Invalid dutyCycle passed to PID::ChangeDutyCycle.";
-            throw e;
-        }
+    if ((d <= 100.0) && (d >= 0.0)){
+        motor_pwm->ChangeDutyCycle(d);
+        dutyCycle = d;
+    } else {
+        string e = "ERROR: Invalid dutyCycle passed to PID::ChangeDutyCycle.";
+        throw e;
     }
 }
 
@@ -106,25 +102,51 @@ float PID::getDutyCycle() {
 
 
 void PID::rpm_interrupt_handler() {
-    cout << "RPM interrupt handler.\n";
     rotationEnd = steady_clock::now();
-    rotationDuration = duration_cast<milliseconds>(rotationEnd - rotationStart);
+    rotationDuration = duration_cast<microseconds>(rotationEnd - rotationStart);
     rotationStart = steady_clock::now();
 
-    cout << "Rotation duration: " << rotationDuration.count() << " milliseconds\n";
-    currentRPM = 60000.0 / rotationDuration.count();
+    // cout << "Rotation duration: " << (rotationDuration.count() / 1000.0) << " milliseconds\n";
+    currentRPM = 60000000.0 / rotationDuration.count();
     cout << "RPM: " << to_string(currentRPM) << '\n';
 
-    errorHistory.push_back(currentRPM);
+    errorHistory.push_back(currentRPM - targetRPM);
     rotationTimeHistory.push_back(rotationDuration.count());
 
-    // if (errorHistory.size() == historySize) {   //if the vector is full, remove the oldest element
-    //     errorHistory.erase(errorHistory.begin());
-    //     rotationTimeHistory.erase(rotationTimeHistory.begin());
-    // }
-
-    printVectors();
+    if (errorHistory.size() > historySize) {   //if the vector is full, remove the oldest element
+        errorHistory.pop_front();
+        rotationTimeHistory.pop_front();
+    }
 }
+
+
+float PID::pidControl(float t, float Pk, float Pi, float Pd) {
+    targetRPM = t;      //update the target RPM for the next time the rpm interrupt is called
+
+    float proportional = errorHistory.back() * Pk;          //use latest error
+
+    float integral = 0;
+    for (int a = 0; a < errorHistory.size(); a++) { //calculate discrete integral over the duration in seconds (multiply milliseconds by 1000)
+        integral += errorHistory[a] * (rotationTimeHistory[a] / 1000);
+    }
+
+    float errorChange = (errorHistory[errorHistory.size() -1] - errorHistory[errorHistory.size() -2]);
+    float derivative = (errorChange / rotationTimeHistory.back()) * Pd;     //change in error divided by the time between rotations. 
+
+    float output = proportional + integral + derivative;
+
+    //correct any invalid values for duty cycle here 
+    if (output > 100) {
+        output = 100.0;
+    } 
+
+    if (output < 0) {
+        output = 0.0;
+    }
+
+    return output;
+}
+
 
 void PID::printVectors() {
     for (int a = 0; a < errorHistory.size(); a++) {
@@ -133,6 +155,7 @@ void PID::printVectors() {
     }
     cout << '\n';
 }
+
 
 void PID::dumpText() {
     ofstream outFile;
@@ -146,7 +169,21 @@ void PID::dumpText() {
 
     for (int a = 0; a < errorHistory.size(); a++){
         outFile << "RPM: " << setprecision(5) << setw(8) << errorHistory[a] << '\t';
-        outFile << "Δt: " << setprecision(3) << rotationTimeHistory[a] << '\n';
+        outFile << "Δt: " << setprecision(6) << rotationTimeHistory[a] << '\n';
+    }
+
+    outFile << '\n';
+
+    outFile.close();
+
+
+    outFile.open("./motorData.csv");
+    outFile << "RPM,deltaT\n";
+    outFile << "0.0,0.0\n";
+
+    for (int a = 0; a < errorHistory.size(); a++){
+        outFile << setprecision(6) << errorHistory[a] << ',';
+        outFile << setprecision(6) << rotationTimeHistory[a] << '\n';
     }
 
     outFile << '\n';
@@ -160,9 +197,13 @@ void PID::dumpText() {
  * on the pins after the program runs.
  */
 PID::~PID() {
-    GPIO::cleanup(this->PWM_pin);
-    GPIO::cleanup(this->direction_pin1);
-    GPIO::cleanup(this->direction_pin2);
-    GPIO::cleanup(this->standby_pin);
-    GPIO::cleanup(this->hall_effect_pin);
+    try {
+        GPIO::cleanup(this->PWM_pin);
+        GPIO::cleanup(this->direction_pin1);
+        GPIO::cleanup(this->direction_pin2);
+        GPIO::cleanup(this->standby_pin);
+        GPIO::cleanup(this->hall_effect_pin);
+    } catch (...) {
+        cout << "Error encountered in PID destructor.\n";
+    }
 }

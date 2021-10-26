@@ -33,7 +33,7 @@ int main() {
     signal(SIGINT, signalHandler);
     pid_ptr = new PID();
     
-    double dutyCycle = 25;
+    double dutyCycle = 5;
     pid_ptr->start(dutyCycle);
     GPIO::setup(18, GPIO::IN);
     GPIO::setup(11, GPIO::OUT, GPIO::LOW);
@@ -43,17 +43,20 @@ int main() {
 
     while(!done){
         delayMs(750);
-        if (dutyCycle >= 50){
+        // dutyCycle += increment;
+        pid_ptr->ChangeDutyCycle(dutyCycle);
+        if (dutyCycle >= 100){
             increment = -5;
         }
         if (dutyCycle <= 0){
             increment = 5;
         }
-        dutyCycle += increment;
-        pid_ptr->ChangeDutyCycle(dutyCycle);
+        // if (pid_ptr->currentRPM >= 4500) {
+        //     cout << "\n\n\n\n 4500RPM reached at " << dutyCycle << "\n\n\n\n";
+        // }
     }
 
-    pid_ptr->rampDown(3);
+    pid_ptr->rampDown(4);
     pid_ptr->dumpText();
 
     return 0;

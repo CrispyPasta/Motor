@@ -11,7 +11,7 @@
 #include <string>
 #include <thread>
 #include <iostream>
-#include <vector>
+#include <deque>
 #include <iomanip>
 #include <fstream>
 
@@ -30,12 +30,11 @@ public:
     // ****** RPM VARIABLES ****** //
     std::chrono::time_point<std::chrono::steady_clock> rotationEnd = std::chrono::steady_clock::now();
     std::chrono::time_point<std::chrono::steady_clock> rotationStart = std::chrono::steady_clock::now();
-    std::chrono::milliseconds rotationDuration;
-    std::vector<float> errorHistory;
-    std::vector<float> rotationTimeHistory;
+    std::chrono::microseconds rotationDuration;
+    std::deque<float> errorHistory;
+    std::deque<float> rotationTimeHistory;
     // ****** MISC ****** //
     GPIO::PWM* motor_pwm;
-    bool setup_complete;
     int historySize;
 
     PID();
@@ -55,6 +54,8 @@ public:
     float getDutyCycle();
 
     void rpm_interrupt_handler();
+
+    float pidControl(float targetrpm, float Pk, float Pi, float Pd);
 
     void printVectors();
 
