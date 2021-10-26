@@ -31,6 +31,7 @@ public:
     std::chrono::time_point<std::chrono::steady_clock> rotationEnd = std::chrono::steady_clock::now();
     std::chrono::time_point<std::chrono::steady_clock> rotationStart = std::chrono::steady_clock::now();
     std::chrono::microseconds rotationDuration;
+    std::deque<float> rpmHistory;
     std::deque<float> errorHistory;
     std::deque<float> rotationTimeHistory;
     // ****** MISC ****** //

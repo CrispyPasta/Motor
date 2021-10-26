@@ -27,8 +27,21 @@ void blink(int channel)
     pid_ptr->rpm_interrupt_handler();
 }
 
-int main() {
+int main(int numArgs, char* args[]) {
     cout << "Hello, World!" << endl;
+    GPIO::setwarnings(false);
+    float targetRPM = 0;
+    float Pk;
+    float Pi;
+    float Pd;
+    if (numArgs == 4) {
+        targetRPM = atof(args[0]);
+        Pk = atof(args[1]);
+        Pi = atof(args[2]);
+        Pd = atof(args[3]);
+        cout << "arguments set\n";
+    }
+
     //when CTRL+C is pressed, signalHandler will be invoked.
     signal(SIGINT, signalHandler);
     pid_ptr = new PID();
@@ -43,7 +56,13 @@ int main() {
 
     while(!done){
         delayMs(750);
-        // dutyCycle += increment;
+        if (numArgs == 4) {
+            dutyCycle = pid_ptr->pidControl(targetRPM, Pk, Pi, Pd);
+            cout << dutyCycle << '\n';
+        } else {
+            dutyCycle += increment;
+        }
+
         pid_ptr->ChangeDutyCycle(dutyCycle);
         if (dutyCycle >= 100){
             increment = -5;

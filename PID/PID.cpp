@@ -110,10 +110,12 @@ void PID::rpm_interrupt_handler() {
     currentRPM = 60000000.0 / rotationDuration.count();
     cout << "RPM: " << to_string(currentRPM) << '\n';
 
+    rpmHistory.push_back(currentRPM);
     errorHistory.push_back(currentRPM - targetRPM);
     rotationTimeHistory.push_back(rotationDuration.count());
 
     if (errorHistory.size() > historySize) {   //if the vector is full, remove the oldest element
+        rpmHistory.pop_front();
         errorHistory.pop_front();
         rotationTimeHistory.pop_front();
     }
@@ -121,17 +123,23 @@ void PID::rpm_interrupt_handler() {
 
 
 float PID::pidControl(float t, float Pk, float Pi, float Pd) {
+    cout << "PID CONTROL FUNCTION\n";
     targetRPM = t;      //update the target RPM for the next time the rpm interrupt is called
 
+    cout << this->errorHistory.back() << '\n';
     float proportional = errorHistory.back() * Pk;          //use latest error
+    cout << "PID CONTROL proportional set\n";
+
 
     float integral = 0;
     for (int a = 0; a < errorHistory.size(); a++) { //calculate discrete integral over the duration in seconds (multiply milliseconds by 1000)
         integral += errorHistory[a] * (rotationTimeHistory[a] / 1000);
     }
+    cout << "PID CONTROL integral set\n";
 
     float errorChange = (errorHistory[errorHistory.size() -1] - errorHistory[errorHistory.size() -2]);
     float derivative = (errorChange / rotationTimeHistory.back()) * Pd;     //change in error divided by the time between rotations. 
+    cout << "PID CONTROL derivative set\n";
 
     float output = proportional + integral + derivative;
 
