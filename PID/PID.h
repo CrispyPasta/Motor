@@ -28,11 +28,15 @@ public:
     float targetRPM;
     float currentRPM;
     // ****** RPM VARIABLES ****** //
-    std::chrono::time_point<std::chrono::steady_clock> rotationEnd = std::chrono::steady_clock::now();
     std::chrono::time_point<std::chrono::steady_clock> rotationStart = std::chrono::steady_clock::now();
+    std::chrono::time_point<std::chrono::steady_clock> rotationEnd = std::chrono::steady_clock::now();
+    std::chrono::time_point<std::chrono::steady_clock> errorStart = std::chrono::steady_clock::now();
+    std::chrono::time_point<std::chrono::steady_clock> errorEnd = std::chrono::steady_clock::now();
     std::chrono::microseconds rotationDuration;
+    std::chrono::milliseconds errorDuration;
     std::deque<float> rpmHistory;
     std::deque<float> errorHistory;
+    std::deque<float> errorTimeHistory;
     std::deque<float> rotationTimeHistory;
     // ****** MISC ****** //
     GPIO::PWM* motor_pwm;
@@ -56,7 +60,9 @@ public:
 
     void rpm_interrupt_handler();
 
-    float pidControl(float targetrpm, float Pk, float Pi, float Pd);
+    void updateError();
+
+    float pidControl(float targetrpm, float Pk, float Ti, float Td);
 
     void printVectors();
 

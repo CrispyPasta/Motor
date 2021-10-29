@@ -21,7 +21,7 @@ PID::PID() {
     this->setupPins(true);
     motor_pwm = new GPIO::PWM(PWM_pin, 1000);
 
-    historySize = 1500;
+    historySize = 500;
 }
 
 
@@ -65,7 +65,10 @@ void PID::ChangeDutyCycle(float d) {
 }
 
 
-void PID::rampDown(int s) {
+void PID::rampDown(int s) { 
+    if (dutyCycle == 0) {
+        return;
+    }
     int pauseLength = (s * 1000) / dutyCycle;
 
     for (int a = dutyCycle; a > 0; --a){
@@ -105,47 +108,67 @@ float PID::getDutyCycle() {
 
 
 void PID::rpm_interrupt_handler() {
+    // cout << "RPM\n";
     rotationEnd = steady_clock::now();
     rotationDuration = duration_cast<microseconds>(rotationEnd - rotationStart);
     rotationStart = steady_clock::now();
 
     // cout << "Rotation duration: " << (rotationDuration.count() / 1000.0) << " milliseconds\n";
     currentRPM = 60000000.0 / rotationDuration.count();
-    // cout << "RPM: " << to_string(currentRPM) << '\n';
+    cout << "RPM: " << to_string(currentRPM) << '\n';
 
     rpmHistory.push_back(currentRPM);
-    errorHistory.push_back(targetRPM - currentRPM);
-    cout << "RPM: " << to_string(errorHistory.back()) << '\n';
+    // errorHistory.push_back(targetRPM - currentRPM);
+    // cout << "Error: " << to_string(errorHistory.back()) << '\n';
     rotationTimeHistory.push_back(rotationDuration.count());
 
-    if (errorHistory.size() > historySize) {   //if the vector is full, remove the oldest element
+    if (rpmHistory.size() > historySize) {   //if the vector is full, remove the oldest element
         rpmHistory.pop_front();
-        errorHistory.pop_front();
+        // errorHistory.pop_front();
         rotationTimeHistory.pop_front();
+    }
+    // cout << "RPM\n";
+}
+
+
+void PID::updateError() {
+    errorEnd = steady_clock::now();
+    errorDuration = duration_cast<milliseconds>(errorEnd - errorStart);
+    errorStart = steady_clock::now();
+
+    errorHistory.push_back(targetRPM - currentRPM);
+    errorTimeHistory.push_back(errorDuration.count());
+
+    if (errorHistory.size() > historySize) {
+        errorHistory.pop_front();
+        errorTimeHistory.pop_front();
     }
 }
 
 
-float PID::pidControl(float t, float Pk, float Pi, float Pd) {
-    cout << "PID CONTROL FUNCTION\n";
+float PID::pidControl(float t, float Pk, float Ti, float Td) {
+    // cout << "PID CONTROL FUNCTION\n";
     targetRPM = t;      //update the target RPM for the next time the rpm interrupt is called
 
     if (errorHistory.size() > 2) {
-        float proportional = errorHistory.back() * Pk;          //use latest error
-        cout << "PID CONTROL proportional set: " << proportional << '\n';
+        float proportional = errorHistory.back();          //use latest error
+        // cout << "PID CONTROL proportional set: " << proportional << '\n';
 
 
         float integral = 0;
         for (int a = 0; a < errorHistory.size(); a++) { //calculate discrete integral over the duration in seconds (multiply milliseconds by 1000)
-            integral += errorHistory[a] * (rotationTimeHistory[a] / 1000000);
+            integral += errorHistory[a] * (errorTimeHistory[a]);      
         }
-        cout << "PID CONTROL integral set: " << integral << '\n';
+        integral = (1.0 / Ti) * integral;
+        // cout << "PID CONTROL integral set: " << integral << '\n';
 
-        float errorChange = (errorHistory[errorHistory.size() -2] - errorHistory[errorHistory.size() -1]);
-        float derivative = (errorChange / rotationTimeHistory.back()) * Pd;     //change in error divided by the time between rotations. 
-        cout << "PID CONTROL derivative set: " << derivative << '\n';
+        float errorChange = (errorHistory.back() - errorHistory[errorHistory.size() -2]);
+        float derivative = (errorChange / errorTimeHistory.back());     //change in error divided by the time between error calculations (in ms). 
+        derivative = Td * derivative;
+        // cout << "PID CONTROL derivative set: " << derivative << '\n';
 
-        float output = proportional + integral + derivative;
+        float output = Pk * (proportional + integral + derivative);
+        // cout << "PID CONTROL Output:" << output << '\n';
 
         //correct any invalid values for duty cycle here 
         if (output > 100) {
@@ -156,12 +179,12 @@ float PID::pidControl(float t, float Pk, float Pi, float Pd) {
             output = 0.0;
         }
         
-        cout << output << '\n';
+        cout << "PID CONTROL Output:" << output << '\n';
         return output;
     }
 
     if (currentRPM < targetRPM) {
-        cout << (dutyCycle +10) << '\n';
+        // cout << (dutyCycle +10) << '\n';
         return (dutyCycle + 10);
     } 
 }
@@ -178,7 +201,8 @@ void PID::printVectors() {
 
 void PID::dumpText() {
     ofstream outFile;
-    outFile.open("./motorData.txt", std::ios_base::app);
+    // ********** RPM Data txt file ***********
+    outFile.open("./rpmData.txt", std::ios_base::app);
     auto t = std::time(nullptr);
     auto tm = *std::localtime(&t);
     outFile << "==============================";
@@ -186,28 +210,40 @@ void PID::dumpText() {
     outFile << put_time(&tm, "%d-%m-%Y %H-%M-%S") << endl;
     outFile << "==============================\n";
 
-    for (int a = 0; a < errorHistory.size(); a++){
-        outFile << "RPM: " << setprecision(5) << setw(8) << errorHistory[a] << '\t';
-        outFile << "Δt: " << setprecision(6) << rotationTimeHistory[a] << '\n';
+    for (int a = 0; a < rpmHistory.size(); a++){
+        outFile << "RPM: " << setprecision(5) << setw(8) << rpmHistory[a] << '\t';
+        outFile << "Δt (ms): " << setprecision(6) << (rotationTimeHistory[a] / 1000) << '\n';
     }
-
     outFile << '\n';
-
     outFile.close();
+    // ********** RPM Data txt file ***********
 
+    // ********** Error Data txt file ***********
+    outFile.open("./errorData.txt", std::ios_base::app);
+    outFile << "==============================";
+    outFile << "\nDate/Time: ";
+    outFile << put_time(&tm, "%d-%m-%Y %H-%M-%S") << endl;
+    outFile << "==============================\n";
 
-    outFile.open("./motorData.csv");
+    for (int a = 0; a < errorHistory.size(); a++){
+        outFile << "E(t): " << setprecision(5) << setw(8) << errorHistory[a] << '\t';
+        outFile << "Δt: " << setprecision(5) << errorTimeHistory[a] << '\n';
+    }
+    outFile << '\n';
+    outFile.close();
+    // ********** Error Data txt file ***********
+
+    // ********** RPM Data csv file ***********
+    outFile.open("./rpmData.csv");
     outFile << "RPM,deltaT\n";
     outFile << "0.0,0.0\n";
-
-    for (int a = 0; a < errorHistory.size(); a++){
-        outFile << setprecision(6) << errorHistory[a] << ',';
+    for (int a = 0; a < rpmHistory.size(); a++){
+        outFile << setprecision(6) << rpmHistory[a] << ',';
         outFile << setprecision(6) << rotationTimeHistory[a] << '\n';
     }
-
     outFile << '\n';
-
     outFile.close();
+    // ********** RPM Data csv file ***********
 }
 
 

@@ -3,6 +3,7 @@
 #include <thread>
 #include <iomanip>
 #include <signal.h>
+#include <fstream>
 #include "./PID/PID.h"
 #include <JetsonGPIO.h>
 
@@ -29,22 +30,46 @@ void blink(int channel)
     pid_ptr->rpm_interrupt_handler();
 }
 
+void readParams(float &Pk, float &Ti, float &Td, int &pidDelay) {
+    ifstream infile;
+    infile.open("./PIDparams.txt");
+    string value;
+    getline(infile, value);
+    Pk = stof(value);
+    getline(infile, value);
+    Ti = stof(value);
+    getline(infile, value);
+    Td = stof(value);
+    getline(infile, value);
+    pidDelay = stoi(value);
+}
+
 int main(int numArgs, char* args[]) {
     cout << "Hello, World!" << endl;
     GPIO::setwarnings(false);
+    GPIO::cleanup();
     float targetRPM = 0;
     float Pk;
-    float Pi;
-    float Pd;
+    float Ti;
+    float Td;
+    int pidDelay;
 
-    if (numArgs == 5) {
-        PIDmode = true;
-        targetRPM = atof(args[1]);
-        Pk = atof(args[2]);
-        Pi = atof(args[3]);
-        Pd = atof(args[4]);
-        cout << "arguments set\n";
-    }
+    // if (numArgs == 5) {
+    //     PIDmode = true;
+    //     targetRPM = atof(args[1]);
+    //     Pk = atof(args[2]);
+    //     Ti = atof(args[3]);
+    //     Td = atof(args[4]);
+    //     cout << "arguments set\n";
+    // }
+
+    PIDmode = false;
+    targetRPM = 2000;
+    // Pk = 0.102;
+    // Ti = 89.419;
+    // Td = 55.887;
+    readParams(Pk, Ti, Td, pidDelay);
+    cout << "arguments set\n";
 
     //when CTRL+C is pressed, signalHandler will be invoked.
     signal(SIGINT, signalHandler);
@@ -59,27 +84,38 @@ int main(int numArgs, char* args[]) {
 
     int increment = 5;
 
+    int runs = 0;
     while(!done){
-        delayMs(750);
+        if (runs == 0) {
+            delayMs(2000);      //one long delay to let the motor stabilize first
+        }
         if (PIDmode) {
-            dutyCycle = pid_ptr->pidControl(targetRPM, Pk, Pi, Pd);
+            delayMs(pidDelay);
+            pid_ptr->updateError();
+            dutyCycle = pid_ptr->pidControl(targetRPM, Pk, Ti, Td);
+            pid_ptr->ChangeDutyCycle(dutyCycle);
         } else {
+            delayMs(1250);
             dutyCycle += increment;
+            cout << dutyCycle << '\n';
+            if (dutyCycle >= 50){
+                increment = -5;
+            }
+            if (dutyCycle <= 10){
+                increment = 5;
+            }
+            pid_ptr->ChangeDutyCycle(dutyCycle);
+            pid_ptr->updateError();
+            // done = true;
+            // if (pid_ptr->currentRPM >= 4500) {
+            //     cout << "\n\n\n\n 4500RPM reached at " << dutyCycle << "\n\n\n\n";
+            // }
         }
 
-        pid_ptr->ChangeDutyCycle(dutyCycle);
-        if (dutyCycle >= 100){
-            increment = -5;
-        }
-        if (dutyCycle <= 0){
-            increment = 5;
-        }
-        // if (pid_ptr->currentRPM >= 4500) {
-        //     cout << "\n\n\n\n 4500RPM reached at " << dutyCycle << "\n\n\n\n";
-        // }
+        
     }
 
-    pid_ptr->rampDown(4);
+    pid_ptr->rampDown(2);
     pid_ptr->dumpText();
 
     return 0;
