@@ -76,7 +76,7 @@ int main(int numArgs, char* args[]) {
     pid_ptr = new PID();
     pid_ptr->targetRPM = targetRPM;
     
-    double dutyCycle = 10;
+    double dutyCycle = 20;
     pid_ptr->start(dutyCycle);
     GPIO::setup(18, GPIO::IN);
     GPIO::setup(11, GPIO::OUT, GPIO::LOW);
@@ -95,7 +95,7 @@ int main(int numArgs, char* args[]) {
             dutyCycle = pid_ptr->pidControl(targetRPM, Pk, Ti, Td);
             pid_ptr->ChangeDutyCycle(dutyCycle);
         } else {
-            delayMs(1250);
+            delayMs(2000);
             dutyCycle += increment;
             cout << dutyCycle << '\n';
             if (dutyCycle >= 50){

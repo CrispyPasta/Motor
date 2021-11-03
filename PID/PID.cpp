@@ -21,7 +21,7 @@ PID::PID() {
     this->setupPins(true);
     motor_pwm = new GPIO::PWM(PWM_pin, 1000);
 
-    historySize = 500;
+    historySize = 1000;
 }
 
 
