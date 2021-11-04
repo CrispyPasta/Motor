@@ -115,7 +115,7 @@ void PID::rpm_interrupt_handler() {
 
     // cout << "Rotation duration: " << (rotationDuration.count() / 1000.0) << " milliseconds\n";
     currentRPM = 60000000.0 / rotationDuration.count();
-    cout << "RPM: " << to_string(currentRPM) << '\n';
+    // cout << "RPM: " << to_string(currentRPM) << '\n';
 
     rpmHistory.push_back(currentRPM);
     // errorHistory.push_back(targetRPM - currentRPM);
@@ -131,13 +131,17 @@ void PID::rpm_interrupt_handler() {
 }
 
 
-void PID::updateError() {
+void PID::updateError(bool first) {
     errorEnd = steady_clock::now();
     errorDuration = duration_cast<milliseconds>(errorEnd - errorStart);
     errorStart = steady_clock::now();
 
     errorHistory.push_back(targetRPM - currentRPM);
-    errorTimeHistory.push_back(errorDuration.count());
+    if (first) {
+        errorTimeHistory.push_back(20);
+    } else {
+        errorTimeHistory.push_back(errorDuration.count());
+    }
 
     if (errorHistory.size() > historySize) {
         errorHistory.pop_front();
@@ -152,7 +156,7 @@ float PID::pidControl(float t, float Pk, float Ti, float Td) {
 
     if (errorHistory.size() > 2) {
         float proportional = errorHistory.back();          //use latest error
-        // cout << "PID CONTROL proportional set: " << proportional << '\n';
+        cout << "Last error: " << proportional << '\n';
 
 
         float integral = 0;
@@ -179,7 +183,7 @@ float PID::pidControl(float t, float Pk, float Ti, float Td) {
             output = 0.0;
         }
         
-        cout << "PID CONTROL Output:" << output << '\n';
+        cout << "PID CONTROL Output:" << output << "\n\n";
         return output;
     }
 
@@ -253,6 +257,7 @@ void PID::dumpText() {
  */
 PID::~PID() {
     try {
+        cout << "PID destructor.\n";
         GPIO::cleanup(this->PWM_pin);
         GPIO::cleanup(this->direction_pin1);
         GPIO::cleanup(this->direction_pin2);

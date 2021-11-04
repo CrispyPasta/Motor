@@ -60,7 +60,7 @@ public:
 
     void rpm_interrupt_handler();
 
-    void updateError();
+    void updateError(bool first);
 
     float pidControl(float targetrpm, float Pk, float Ti, float Td);
 
